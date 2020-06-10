@@ -1,4 +1,4 @@
-Role Name
+Postgres-ha
 =========
 
 This role coule be used for setting up postgres master slave setup with one master and multiple slaves.
