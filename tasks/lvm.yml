@@ -1,0 +1,31 @@
+---
+---
+# tasks file for lvm-creation
+- name: VG creation in progress
+  lvg:
+    vg: "{{vgname}}"
+    pvs: "{{pvname}}"
+
+- name: LV creation in progress
+  lvol:
+    vg: "{{vgname}}"
+    lv: "{{lvname}}"
+    size: "{{lv_size}}"
+
+- name: create filesystem on servers
+  filesystem:
+    fstype: "{{fstype_name}}"
+    dev: "{{fs_dev_name}}"
+
+- name: creating directory for mount point
+  file:
+    path: "{{mount_point}}"
+    state: directory
+    mode: '0755'
+
+- name: mounting filesystem on servers
+  mount:
+    name: "{{mount_point}}"
+    src: "{{fs_dev_name}}"
+    fstype: "{{fstype_name}}"
+    state: mounted

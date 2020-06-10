@@ -1,0 +1,6 @@
+---
+- name: Including playbook to configure LVM for postgres data
+  include_tasks: lvm.yml
+
+- name: Including playbook to configure postgres MASTER/SLAVE 
+  include_tasks: postgres_master_slave.yml

@@ -1,0 +1,4 @@
+standby_mode = 'on'
+primary_conninfo = 'user={{replication_user}} passfile=''/home/postgres/.pgpass'' host={{dbmaster}} port=5432 sslmode=prefer sslcompression=0 target_session_attrs=any'
+primary_slot_name = '{{replication_slot}}'
+recovery_target_timeline = 'latest'

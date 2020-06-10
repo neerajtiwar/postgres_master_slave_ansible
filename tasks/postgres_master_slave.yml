@@ -1,0 +1,104 @@
+---
+# tasks file for postgres
+- name: make host entry for airtelproxy
+  template:
+    src: /ansible/airtelwork/roles/postgres/templates/hosts.j2
+    dest: /etc/hosts
+
+- name: increasing ulimit for postgres user
+  template:
+    src: /ansible/airtelwork/roles/postgres/templates/pgsql.conf.j2
+    dest: /etc/security/limits.d/pgsql.conf
+
+- name: disabling ssl verify in yum
+  shell: echo "sslverify=false" >> /etc/yum.conf
+  run_once: true
+
+- name: installing postgres yum repo
+  command: rpm -ivh "http://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+  args:
+    creates: /etc/yum.repos.d/pgdg-redhat-all.repo
+  environment:
+    http_proxy: "{{var_http_proxy}}"
+    https_proxy: "{{var_https_proxy}}"
+
+- name: installing postgres server
+  yum:
+    name: "{{postgres_package}}"
+    state: installed
+  environment:
+    http_proxy: "{{var_http_proxy}}"
+    https_proxy: "{{var_https_proxy}}"
+  tags: postgis
+
+- name: checking file permissions of Data Dir
+  file:
+    path: /data
+    owner: postgres
+    group: postgres
+    mode: '0700'
+    recurse: yes
+
+- name: initializing DB
+  command: "{{postgres_binary}}initdb -D {{postgres_data_dir}}"
+  become: true
+  become_user: postgres
+  args:
+    creates: "{{postgres_conf_file_path}}"
+  when: role == "master"
+
+- name: creating postgres service
+  template:
+    src: /ansible/airtelwork/roles/postgres/templates/postgresql-11.service.j2
+    dest: /usr/lib/systemd/system/postgresql-11.service    
+
+- name: starting postgreSql server
+  systemd:
+    name: postgresql-11
+    state: started
+    daemon_reload: yes
+  tags: db_start
+  when: role == "master"
+
+- name: creating postgreSql.conf file
+  template: 
+    src: /ansible/airtelwork/roles/postgres/templates/postgresql.conf.j2
+    dest: "{{postgres_data_dir}}/postgresql.conf"
+  notify: restart postgreSql-11
+  when: role == "master"
+  
+- name: creating pg_hba.conf
+  template:
+    src: /ansible/airtelwork/roles/postgres/templates/pg_hba.conf.j2
+    dest: "{{postgres_data_dir}}/pg_hba.conf"
+  notify: reload postgreSql-11
+  when: role == "master"
+
+- name: CREATE Replication USER
+  command: psql -U postgres -c "CREATE USER {{replication_user}} WITH REPLICATION ENCRYPTED PASSWORD 'replication';"
+  run_once: true
+  when: role == "master"
+  ignore_errors: true
+
+- name: CREATE Replication SLOT for slave node
+  command: psql -U postgres -c "SELECT * FROM pg_create_physical_replication_slot('{{replication_slot}}');"
+  run_once: true
+  when: role == "master"
+  ignore_errors: true
+
+- name: Preparing slave with BASEBACKUP from master!
+  command: pg_basebackup -h "{{dbmaster}}" -D "{{postgres_data_dir}}" -U "{{replication_user}}" -R -P -X stream -c fast
+  become_user: postgres
+  when: role == "slave"
+  args:
+    creates: /data/postgres/postgresql.conf
+
+- name: creating recovery.conf for slave
+  template:
+    src: /ansible/airtelwork/roles/postgres/templates/recovery.conf.j2
+    dest: "{{postgres_data_dir}}/recovery.conf"
+    owner: postgres
+    group: postgres
+    mode: '0700'
+  when: role == "slave"
+  notify: restart postgreSql-11
