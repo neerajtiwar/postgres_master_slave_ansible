@@ -1,13 +1,13 @@
 ---
 # tasks file for postgres
-- name: make host entry for airtelproxy
+- name: make host entry for exampleproxy
   template:
-    src: /ansible/airtelwork/roles/postgres/templates/hosts.j2
+    src: /ansible/examplework/roles/postgres/templates/hosts.j2
     dest: /etc/hosts
 
 - name: increasing ulimit for postgres user
   template:
-    src: /ansible/airtelwork/roles/postgres/templates/pgsql.conf.j2
+    src: /ansible/examplework/roles/postgres/templates/pgsql.conf.j2
     dest: /etc/security/limits.d/pgsql.conf
 
 - name: disabling ssl verify in yum
@@ -49,7 +49,7 @@
 
 - name: creating postgres service
   template:
-    src: /ansible/airtelwork/roles/postgres/templates/postgresql-11.service.j2
+    src: /ansible/examplework/roles/postgres/templates/postgresql-11.service.j2
     dest: /usr/lib/systemd/system/postgresql-11.service    
 
 - name: starting postgreSql server
@@ -62,14 +62,14 @@
 
 - name: creating postgreSql.conf file
   template: 
-    src: /ansible/airtelwork/roles/postgres/templates/postgresql.conf.j2
+    src: /ansible/examplework/roles/postgres/templates/postgresql.conf.j2
     dest: "{{postgres_data_dir}}/postgresql.conf"
   notify: restart postgreSql-11
   when: role == "master"
   
 - name: creating pg_hba.conf
   template:
-    src: /ansible/airtelwork/roles/postgres/templates/pg_hba.conf.j2
+    src: /ansible/examplework/roles/postgres/templates/pg_hba.conf.j2
     dest: "{{postgres_data_dir}}/pg_hba.conf"
   notify: reload postgreSql-11
   when: role == "master"
@@ -95,7 +95,7 @@
 
 - name: creating recovery.conf for slave
   template:
-    src: /ansible/airtelwork/roles/postgres/templates/recovery.conf.j2
+    src: /ansible/examplework/roles/postgres/templates/recovery.conf.j2
     dest: "{{postgres_data_dir}}/recovery.conf"
     owner: postgres
     group: postgres
